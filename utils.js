@@ -53,3 +53,23 @@ function loadTextResource(url) {
 		request.send();
 	});
 }
+
+function hslToRgb(h, s, l) {
+	h /= 360;
+	const a = s * Math.min(l, 1 - l);
+	const f = (n, k = (n + h / (1/12)) % 12) => l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+	return [f(0), f(8), f(4)];
+}
+
+function easeInOutQuad(t) {
+	return t < 0.5
+		? 2 * t * t
+		: -1 + (4 - 2 * t) * t;
+}
+
+function shortestAngleBetween(a, b) {
+	let diff = b - a;
+	if (diff > Math.PI) diff -= 2 * Math.PI; //if rotation greater than 180 turn 360 around
+	if (diff < -Math.PI) diff += 2 * Math.PI;
+	return diff;
+}
