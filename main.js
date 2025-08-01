@@ -6,9 +6,11 @@ async function main() {
 
 //Constants 
 const NUM_ITEMS = 10;
-const ITEM_RADIUS = 8;
+const ITEM_RADIUS = 10;
 const KEYS = ["w", "s", "a", "d", "q", "e"];
-const LERP_SPEED_INVENTORY = 0.025;
+const SCALE_FACTOR = 0.4;
+const ROTATION_Y_SPEED = 0.005;
+const LERP_SPEED_INVENTORY = 0.0065;
 
 
 // this data is set in initialize() and used in render()
@@ -19,17 +21,18 @@ let uniformModelMatrixLocation;
 let uniformViewMatrixLocation;
 let uniformProjectionMatrixLocation;
 
-let cameraRotation = { x: 17.5, y: 0 };
-let cameraTranslation = {x: 0, y: 1, z: 17.5}; //z = camera Distance
+let cameraRotation = { x: 12.5, y: 0 };
+let cameraTranslation = {x: 0, y: 1, z: 20}; //z = camera Distance
 
 const items = [];
 let selectedItemIndex = 0;
+let previousItemIndex = 0;
 
 // switch between items
 let startAngle = 0;
 let targetAngle = 0;
 let currentAngle = 0;
-let rotationProgress = 1;
+let rotationProgressCarousel = 1;
 
 let inspectRotationX = 0;
 let inspectRotationY = 0;
@@ -55,7 +58,7 @@ async function initialize() {
 		const angle = (i / NUM_ITEMS) * 2 * Math.PI;
 		const x = Math.sin(angle) * ITEM_RADIUS;
 		const z = Math.cos(angle) * ITEM_RADIUS;
-
+		const lookAtAngleY = Math.atan2(x,z);
 
 		const hue = (i/NUM_ITEMS) * 360;
 		const color = hslToRgb(hue, 0.8, 0.6);
@@ -64,7 +67,11 @@ async function initialize() {
 			position: {x, y: 0, z},
 			angle,
 			color: color,
-			id: i
+			id: i,
+			scaleFactor: 1.0,
+			rotationYStart: 0.0,
+			rotationY: lookAtAngleY,
+			lookAtAngleY: lookAtAngleY,
 		});
 	}
 
@@ -102,18 +109,18 @@ function uploadAttributeData() {
 	const indexBuffer = gl.createBuffer();
 	// gl.ELEMENT_ARRAY_BUFFER tells WebGL that this buffer should be treated as an index list
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(quadMesh.indices), gl.STATIC_DRAW);
+	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(monkeyMesh.indices), gl.STATIC_DRAW);
 
 	const posBuffer = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
-	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quadMesh.positions), gl.STATIC_DRAW);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(monkeyMesh.positions), gl.STATIC_DRAW);
 	const posAttributeLocation = gl.getAttribLocation(program, "a_position");
 	gl.vertexAttribPointer(posAttributeLocation, 3, gl.FLOAT, false, 0, 0);
 	gl.enableVertexAttribArray(posAttributeLocation);
 
 	const uvBuffer = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
-	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quadMesh.uvs), gl.STATIC_DRAW);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(monkeyMesh.uvs), gl.STATIC_DRAW);
 	const uvAttributeLocation = gl.getAttribLocation(program, "a_uv");
 	gl.vertexAttribPointer(uvAttributeLocation, 2, gl.FLOAT, false, 0, 0);
 	gl.enableVertexAttribArray(uvAttributeLocation);
@@ -130,55 +137,31 @@ function render(time) {
 	gl.clear(gl.DEPTH_BUFFER_BIT);
 
 	gl.useProgram(program);
-
 	gl.bindVertexArray(vao);
 
-	updateRotation();
+	updateCameraRotation();
+	updateInventoryLerp()
 
-	//smooth rotation when switching between items
-	if(rotationProgress < 1)
-	{
-		rotationProgress += LERP_SPEED_INVENTORY;
 
-		if (rotationProgress > 1) rotationProgress = 1;
-
-		const shortestAngle = shortestAngleBetween(startAngle, targetAngle);
-		const t = easeInOutQuad(rotationProgress);
-		currentAngle = startAngle + shortestAngle * t;
-	}
-	else{
-		currentAngle = targetAngle;
-	}
-
-	const { viewMatrix, currentCameraPos } = setMatrices();
-	const numVertices = quadMesh.indices.length;
-
+	const { viewMatrix, projectionMatrix } = setMatrices();
+	const numVertices = monkeyMesh.indices.length;
+	
 	for(let i = 0; i < items.length; i++)
 	{
 		const item = items[i];
 
-		const itemPos = item.position;
+		updateItemScaleAndRotation(item, i);
 
-		const toCameraX = currentCameraPos.x - itemPos.x;
-		const toCameraY = currentCameraPos.y - itemPos.y;
-		const toCameraZ = currentCameraPos.z - itemPos.z;
-
-		const lookAtAngleY = Math.atan2(toCameraX, toCameraZ);
-
-		let modelMatrix = mat4Translation(itemPos.x, itemPos.y, itemPos.z);
+		const modelMatrix = buildItemModelMatrix(item, i);
 		
-		const rotationMatrix = mat4RotY(lookAtAngleY);
-		modelMatrix = mat4Mul(modelMatrix, rotationMatrix); 
-		
-		if(i === selectedItemIndex)
-		{
-			const scaleMatrix = mat4Scale(1.4,1.4,1.4);
-			modelMatrix = mat4Mul(modelMatrix, scaleMatrix);
-		}
 		gl.uniformMatrix4fv(uniformModelMatrixLocation, true, modelMatrix);
 		gl.uniform3fv(uniformColorLocation, item.color);
 		gl.drawElements(gl.TRIANGLES, numVertices, gl.UNSIGNED_SHORT, 0);
 	}
+		
+	// we set transpose to true to convert to column-major
+	gl.uniformMatrix4fv(uniformViewMatrixLocation, true, viewMatrix);
+	gl.uniformMatrix4fv(uniformProjectionMatrixLocation, true, projectionMatrix);
 
 	// unbind to avoid accidental modification
 	gl.bindVertexArray(vao);
@@ -187,48 +170,88 @@ function render(time) {
 	requestAnimationFrame(render);
 }
 
-function setMatrices() {
-	// use row-major notation (like in maths)
-	const modelMatrix = [
-		1,0,0,0,
-		0,1,0,0,
-		0,0,1,0,
-		0,0,0,1,
-	];
+function buildItemModelMatrix(item, index){
+	let modelMatrix = mat4Translation(item.position.x, item.position.y, item.position.z);	
 	
-	const  targetRotationY = -(currentAngle * 180 / Math.PI) + cameraRotation.y; //grad
-	
-	const cameraWorldPos = getCameraWorldPosition(cameraRotation.x, -targetRotationY, cameraTranslation.z);
+	//deprecated lookAt(camera)
+	// let rotationMatrix = lookAtXZ(item, worldCamerPos);
+			
+	let rotationMatrix = mat4RotY(item.rotationY);
+			
+	modelMatrix = mat4Mul(modelMatrix, rotationMatrix);
+	modelMatrix = mat4Mul(modelMatrix, mat4Scale(item.scaleFactor, item.scaleFactor, item.scaleFactor));
 
+	return modelMatrix;
+}
+
+function setMatrices() {	
+	const targetRotationY = -(currentAngle * 180 / Math.PI) + cameraRotation.y; //grad
+
+	//deprecated
+	// const cameraWorldPos = getCameraWorldPosition(cameraRotation.x, -targetRotationY, cameraTranslation.z);
+
+	//viewMatrix
 	const vT = mat4Translation(cameraTranslation.x, cameraTranslation.y, -cameraTranslation.z);
-
 	const vRy = mat4RotY(targetRotationY * Math.PI / 180);
 	const vRx = mat4RotX(cameraRotation.x * Math.PI / 180);
-
 	const viewMatrix = mat4Mul(vT, mat4Mul(vRx, vRy));
 
+	//projectionMatrix
 	const canvasWrapper = document.querySelector("#canvasWrapper");
 	const aspectRatio = canvasWrapper.clientWidth / canvasWrapper.clientHeight;
+	//angle, aspectRatio, near-clipping, far-clipping => !Frustum!
 	const projectionMatrix = perspective(45, aspectRatio, 0.1, 100);
 
-	// we set transpose to true to convert to column-major
-	gl.uniformMatrix4fv(uniformModelMatrixLocation, true, modelMatrix);
-	gl.uniformMatrix4fv(uniformViewMatrixLocation, true, viewMatrix);
-	gl.uniformMatrix4fv(uniformProjectionMatrixLocation, true, projectionMatrix);
-
-	return {viewMatrix, currentCameraPos: cameraWorldPos}
+	return {viewMatrix, projectionMatrix}
 }
 
-function rotateInventory(direction) {
-	selectedItemIndex = (selectedItemIndex + direction + NUM_ITEMS) % NUM_ITEMS;
-
-	startAngle = currentAngle;
-	targetAngle = items[selectedItemIndex].angle;
-	rotationProgress = 0;
+function updateItemScaleAndRotation(item, index){
+	//scaling of item
+	if(index === selectedItemIndex && rotationProgressCarousel < 1){
+		item.scaleFactor = 1.0 + SCALE_FACTOR * easeInOutQuad(rotationProgressCarousel);
+	}
+	else if(index === previousItemIndex && rotationProgressCarousel < 1){
+		const step_t = easeInOutQuad(rotationProgressCarousel);
+		item.scaleFactor = 1.4 - SCALE_FACTOR * step_t
+		
+		const shortestAngle = shortestAngleBetween(item.rotationYStart, item.lookAtAngleY);
+		item.rotationY = item.rotationYStart + shortestAngle * step_t;
+	}
+	else if(index === selectedItemIndex && rotationProgressCarousel >= 1){
+		item.scaleFactor = 1.0 + SCALE_FACTOR;
+		item.rotationY += ROTATION_Y_SPEED;
+	}
 }
 
+//smooth rotation when switching between items
+function updateInventoryLerp(){
+	if(rotationProgressCarousel < 1)
+	{
+		rotationProgressCarousel += LERP_SPEED_INVENTORY;
 
-function getCameraWorldPosition(rotXDeg, rotYDeg, distance, center = {x: 0, y: 0, z: 0}) {
+		if (rotationProgressCarousel > 1) rotationProgressCarousel = 1;
+
+		const shortestAngle = shortestAngleBetween(startAngle, targetAngle);
+		const step_t = easeInOutQuad(rotationProgressCarousel);
+		currentAngle = startAngle + shortestAngle * step_t;
+	}
+	else{
+		currentAngle = targetAngle;
+	}
+}
+
+//deprecated
+function lookAtXZ(sourceItem, targetObject)
+{
+	//look at the camera on the XZ-Plane
+	const toCameraX = targetObject.x - sourceItem.position.x;
+	const toCameraZ = targetObject.z - sourceItem.position.z;
+	const lookAtAngleY = Math.atan2(toCameraX, toCameraZ);
+	return mat4RotY(lookAtAngleY); 
+}
+
+//deprecated
+function getCameraWorldPosition(rotXDeg, rotYDeg, distance) {
 	const rotX = rotXDeg * Math.PI / 180; //radiant
 	const rotY = rotYDeg * Math.PI / 180; //radiant
 	
@@ -244,19 +267,38 @@ function getCameraWorldPosition(rotXDeg, rotYDeg, distance, center = {x: 0, y: 0
 		z: cosY * cosX
 	};
 	
+	//from (0,0,0) => for another centerPoint add them to every coord 
 	return {
-		x: center.x + dir.x * distance,
-		y: center.y + dir.y * distance,
-		z: center.z + dir.z * distance
+		x: dir.x * distance,
+		y: dir.y * distance,
+		z: dir.z * distance
 	};
 }
+
+function rotateInventory(direction) {
+	previousItemIndex = selectedItemIndex;
+	items[previousItemIndex].rotationYStart = items[previousItemIndex].rotationY;
+	
+	selectedItemIndex = (selectedItemIndex + direction + NUM_ITEMS) % NUM_ITEMS;
+
+	startAngle = currentAngle;
+	targetAngle = items[selectedItemIndex].angle;
+	rotationProgressCarousel = 0;
+}
+
+function updateCameraRotation() {
+  if (keysPressed.has("w")) cameraRotation.x += 1.2;
+  if (keysPressed.has("s")) cameraRotation.x -= 1.2;
+  if (keysPressed.has("q")) cameraRotation.y += 1.2;
+  if (keysPressed.has("e")) cameraRotation.y -= 1.2;
+};
 
 //listerners
 window.addEventListener("keydown", (event) => {
 	const key = event.key.toLowerCase();
 	
 	// coolodown for button press
-	if(rotationProgress >= 0.75)
+	if(rotationProgressCarousel >= 1.0)
 	{
 		if(key === "a") rotateInventory(-1);
 		if(key === "d") rotateInventory(1);
@@ -264,16 +306,10 @@ window.addEventListener("keydown", (event) => {
 	
 	if(KEYS.includes(key)) keysPressed.add(key);
 });
+
 window.addEventListener("keyup", (event) => {
 	keysPressed.delete(event.key.toLowerCase());
 });
-
-function updateRotation() {
-  if (keysPressed.has("w")) cameraRotation.x += 1.2;
-  if (keysPressed.has("s")) cameraRotation.x -= 1.2;
-  if (keysPressed.has("q")) cameraRotation.y += 1.2;
-  if (keysPressed.has("e")) cameraRotation.y -= 1.2;
-};
 
 
 window.onload = main;

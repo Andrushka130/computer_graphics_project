@@ -69,7 +69,10 @@ function easeInOutQuad(t) {
 
 function shortestAngleBetween(a, b) {
 	let diff = b - a;
-	if (diff > Math.PI) diff -= 2 * Math.PI; //if rotation greater than 180 turn 360 around
-	if (diff < -Math.PI) diff += 2 * Math.PI;
+
+	//another edgecase -> when multiple 360° happened
+	diff %= (Math.PI * 2);
+	//if rotation greater than 180 sub 360 - if smaller than -180 add 360
+	diff += (diff > Math.PI) ? -(Math.PI * 2) : (diff < -(Math.PI)) ? (Math.PI * 2) : 0
 	return diff;
 }
