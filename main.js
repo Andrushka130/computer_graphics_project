@@ -21,6 +21,7 @@ let uniformModelMatrixLocation;
 let uniformViewMatrixLocation;
 let uniformProjectionMatrixLocation;
 
+let inspectMode = false;
 let cameraRotation = { x: 12.5, y: 0 };
 let cameraTranslation = {x: 0, y: 1, z: 20}; //z = camera Distance
 
@@ -33,9 +34,6 @@ let startAngle = 0;
 let targetAngle = 0;
 let currentAngle = 0;
 let rotationProgressCarousel = 1;
-
-let inspectRotationX = 0;
-let inspectRotationY = 0;
 
 //input "manager" for simultaneously button presses
 const keysPressed = new Set();
@@ -146,17 +144,30 @@ function render(time) {
 	const { viewMatrix, projectionMatrix } = setMatrices();
 	const numVertices = monkeyMesh.indices.length;
 	
-	for(let i = 0; i < items.length; i++)
+	if(inspectMode)
 	{
-		const item = items[i];
+		const item = items[selectedItemIndex];
+		updateItemScaleAndRotation(item, selectedItemIndex);
 
-		updateItemScaleAndRotation(item, i);
-
-		const modelMatrix = buildItemModelMatrix(item, i);
-		
+		const modelMatrix = buildItemModelMatrix(item, selectedItemIndex);
 		gl.uniformMatrix4fv(uniformModelMatrixLocation, true, modelMatrix);
 		gl.uniform3fv(uniformColorLocation, item.color);
 		gl.drawElements(gl.TRIANGLES, numVertices, gl.UNSIGNED_SHORT, 0);
+	}
+	else
+	{
+		for(let i = 0; i < items.length; i++)
+		{
+			const item = items[i];
+	
+			updateItemScaleAndRotation(item, i);
+	
+			const modelMatrix = buildItemModelMatrix(item, i);
+			
+			gl.uniformMatrix4fv(uniformModelMatrixLocation, true, modelMatrix);
+			gl.uniform3fv(uniformColorLocation, item.color);
+			gl.drawElements(gl.TRIANGLES, numVertices, gl.UNSIGNED_SHORT, 0);
+		}
 	}
 		
 	// we set transpose to true to convert to column-major
@@ -186,15 +197,31 @@ function buildItemModelMatrix(item, index){
 
 function setMatrices() {	
 	const targetRotationY = -(currentAngle * 180 / Math.PI) + cameraRotation.y; //grad
-
+	let viewMatrix;
 	//deprecated
 	// const cameraWorldPos = getCameraWorldPosition(cameraRotation.x, -targetRotationY, cameraTranslation.z);
 
-	//viewMatrix
-	const vT = mat4Translation(cameraTranslation.x, cameraTranslation.y, -cameraTranslation.z);
-	const vRy = mat4RotY(targetRotationY * Math.PI / 180);
-	const vRx = mat4RotX(cameraRotation.x * Math.PI / 180);
-	const viewMatrix = mat4Mul(vT, mat4Mul(vRx, vRy));
+	if(inspectMode)
+	{
+		const itemPos = items[selectedItemIndex].position;
+		const inspectDistance = 10;
+
+		const vT1 = mat4Translation(-itemPos.x, -itemPos.y, -itemPos.z);
+
+		const ry = mat4RotY(cameraRotation.y * Math.PI / 180);
+		const rx = mat4RotX(cameraRotation.x * Math.PI / 180);
+
+		const vT2 = mat4Translation(0, 0, -inspectDistance);
+		viewMatrix = mat4Mul(vT2, mat4Mul(rx, mat4Mul(ry, vT1)));
+	}
+	else
+	{		
+		//viewMatrix
+		const vT = mat4Translation(cameraTranslation.x, cameraTranslation.y, -cameraTranslation.z);
+		const vRy = mat4RotY((targetRotationY * Math.PI / 180));
+		const vRx = mat4RotX(cameraRotation.x * Math.PI / 180);
+		viewMatrix = mat4Mul(vT, mat4Mul(vRx, vRy));
+	}
 
 	//projectionMatrix
 	const canvasWrapper = document.querySelector("#canvasWrapper");
@@ -206,6 +233,7 @@ function setMatrices() {
 }
 
 function updateItemScaleAndRotation(item, index){
+	if(inspectMode) return;
 	//scaling of item
 	if(index === selectedItemIndex && rotationProgressCarousel < 1){
 		item.scaleFactor = 1.0 + SCALE_FACTOR * easeInOutQuad(rotationProgressCarousel);
@@ -287,21 +315,33 @@ function rotateInventory(direction) {
 }
 
 function updateCameraRotation() {
-  if (keysPressed.has("w")) cameraRotation.x += 1.2;
-  if (keysPressed.has("s")) cameraRotation.x -= 1.2;
-  if (keysPressed.has("q")) cameraRotation.y += 1.2;
-  if (keysPressed.has("e")) cameraRotation.y -= 1.2;
+	if(!inspectMode) return;
+	if (keysPressed.has("w")) cameraRotation.x += 1.2;
+	if (keysPressed.has("s")) cameraRotation.x -= 1.2;
+	if (keysPressed.has("d")) cameraRotation.y += 1.2;
+	if (keysPressed.has("a")) cameraRotation.y -= 1.2;
 };
 
 //listerners
 window.addEventListener("keydown", (event) => {
 	const key = event.key.toLowerCase();
 	
+	if(inspectMode && rotationProgressCarousel >= 1.0)
+	{
+		if(key === "q") 
+		{
+			inspectMode = false;
+			return;
+		}
+	}
+
 	// coolodown for button press
-	if(rotationProgressCarousel >= 1.0)
+	if(!inspectMode && rotationProgressCarousel >= 1.0)
 	{
 		if(key === "a") rotateInventory(-1);
 		if(key === "d") rotateInventory(1);
+		if(key === "q") inspectMode = true;
+		return;
 	}
 	
 	if(KEYS.includes(key)) keysPressed.add(key);
