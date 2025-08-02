@@ -24,6 +24,7 @@ let uniformProjectionMatrixLocation;
 let inspectMode = false;
 let cameraRotation = { x: 12.5, y: 0 };
 let cameraTranslation = {x: 0, y: 1, z: 20}; //z = camera Distance
+let inspectModeCameraRotation = {...cameraRotation};
 
 const items = [];
 let selectedItemIndex = 0;
@@ -35,12 +36,15 @@ let targetAngle = 0;
 let currentAngle = 0;
 let rotationProgressCarousel = 1;
 
+
+let backgroundTexture;
+
 //input "manager" for simultaneously button presses
 const keysPressed = new Set();
 
 async function initialize() {
 	const canvas = document.querySelector("canvas"); // get the html canvas element
-	const canvasWrapper = document.querySelector("#canvasWrapper")
+	const canvasWrapper = document.querySelector("#canvasWrapper");
 	
 	// everytime we talk to WebGL we use this object
 	gl = canvas.getContext("webgl2", { alpha: false });
@@ -49,6 +53,8 @@ async function initialize() {
 		console.error("Your browser does not support WebGL2");
 		return; 
 	}
+
+	backgroundTexture = await loadTexture(gl, "./textures/leather_red_03_coll1_4k.png");
 
 	for (let i = 0; i < NUM_ITEMS; i++)
 	{
@@ -61,11 +67,16 @@ async function initialize() {
 		const hue = (i/NUM_ITEMS) * 360;
 		const color = hslToRgb(hue, 0.8, 0.6);
 
+		let mesh;
+		let texture;
+
 		items.push({
 			position: {x, y: 0, z},
 			angle,
 			color: color,
 			id: i,
+			mesh: mesh,
+			texture: texture,
 			scaleFactor: 1.0,
 			rotationYStart: 0.0,
 			rotationY: lookAtAngleY,
@@ -80,8 +91,7 @@ async function initialize() {
 	// set the resolution of the framebuffer
 	gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 	
-	gl.enable(gl.DEPTH_TEST); // enable z-buffering
-	gl.disable(gl.CULL_FACE); // enable back-face culling
+	gl.enable(gl.CULL_FACE); // enable back-face culling
 
 	// loadTextResource returns a string that contains the content of a text file
 	const vertexShaderText = await loadTextResource("shader.vert");
@@ -91,13 +101,17 @@ async function initialize() {
 	const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderText);
 	// link the two shaders - create a program that uses both shaders
 	program = createProgram(gl, vertexShader, fragmentShader);
-
+	
+	uploadBackgroundData();
 	uploadAttributeData();
+
+	uniformColorLocation = gl.getUniformLocation(program, "u_color");
+	uniformTextureLocation = gl.getUniformLocation(program, "u_texture");
+	uniformUseTextureLocation = gl.getUniformLocation(program, "u_useTexture");
 
 	uniformModelMatrixLocation = gl.getUniformLocation(program, "u_modelMatrix");
 	uniformViewMatrixLocation = gl.getUniformLocation(program, "u_viewMatrix");
 	uniformProjectionMatrixLocation = gl.getUniformLocation(program, "u_projectionMatrix");
-	uniformColorLocation = gl.getUniformLocation(program, "u_color");
 }
 
 function uploadAttributeData() {
@@ -129,19 +143,81 @@ function uploadAttributeData() {
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
 }
 
+function uploadBackgroundData(){
+	backgroundVAO = gl.createVertexArray();
+	gl.bindVertexArray(backgroundVAO);
+
+	const indexBuffer = gl.createBuffer();
+	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(backgroundMesh.indices), gl.STATIC_DRAW);
+
+	const posBuffer = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(backgroundMesh.positions), gl.STATIC_DRAW);
+	const posAttributeLocation = gl.getAttribLocation(program, "a_position");
+	gl.vertexAttribPointer(posAttributeLocation, 3, gl.FLOAT, false, 0, 0);
+	gl.enableVertexAttribArray(posAttributeLocation);
+
+	const uvBuffer = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(backgroundMesh.uvs), gl.STATIC_DRAW);
+	const uvAttributeLocation = gl.getAttribLocation(program, "a_uv");
+	gl.vertexAttribPointer(uvAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+	gl.enableVertexAttribArray(uvAttributeLocation);
+
+	gl.bindVertexArray(null);
+	gl.bindBuffer(gl.ARRAY_BUFFER, null);
+	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+}
+
 function render(time) {
 	gl.clearColor(0, 0, 0, 1);
 	gl.clear(gl.COLOR_BUFFER_BIT);
 	gl.clear(gl.DEPTH_BUFFER_BIT);
 
 	gl.useProgram(program);
+
+	//background
+	gl.disable(gl.DEPTH_TEST); // disable z-buffering
+	gl.bindVertexArray(backgroundVAO);
+
+	const matIdentity = [
+		1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1
+	];
+
+	gl.uniformMatrix4fv(uniformModelMatrixLocation, true, matIdentity);
+	gl.uniformMatrix4fv(uniformViewMatrixLocation, true, matIdentity);
+	gl.uniformMatrix4fv(uniformProjectionMatrixLocation, true, matIdentity);
+
+	// Textur binden
+	gl.uniform1i(uniformUseTextureLocation, true);
+	gl.activeTexture(gl.TEXTURE0);
+	gl.bindTexture(gl.TEXTURE_2D, backgroundTexture);
+	gl.uniform1i(uniformTextureLocation, 0);
+
+	gl.drawElements(gl.TRIANGLES, backgroundMesh.indices.length, gl.UNSIGNED_SHORT, 0);
+
+	
+	
+	//items
+	gl.enable(gl.DEPTH_TEST); // enable z-buffering
+
 	gl.bindVertexArray(vao);
+	gl.uniform1i(uniformUseTextureLocation, false);
 
 	updateCameraRotation();
 	updateInventoryLerp()
 
 
 	const { viewMatrix, projectionMatrix } = setMatrices();
+	
+	// we set transpose to true to convert to column-major
+	gl.uniformMatrix4fv(uniformViewMatrixLocation, true, viewMatrix);
+	gl.uniformMatrix4fv(uniformProjectionMatrixLocation, true, projectionMatrix);
+
 	const numVertices = monkeyMesh.indices.length;
 	
 	if(inspectMode)
@@ -152,6 +228,7 @@ function render(time) {
 		const modelMatrix = buildItemModelMatrix(item, selectedItemIndex);
 		gl.uniformMatrix4fv(uniformModelMatrixLocation, true, modelMatrix);
 		gl.uniform3fv(uniformColorLocation, item.color);
+
 		gl.drawElements(gl.TRIANGLES, numVertices, gl.UNSIGNED_SHORT, 0);
 	}
 	else
@@ -162,7 +239,7 @@ function render(time) {
 	
 			updateItemScaleAndRotation(item, i);
 	
-			const modelMatrix = buildItemModelMatrix(item, i);
+			const modelMatrix = buildItemModelMatrix(item);
 			
 			gl.uniformMatrix4fv(uniformModelMatrixLocation, true, modelMatrix);
 			gl.uniform3fv(uniformColorLocation, item.color);
@@ -170,9 +247,6 @@ function render(time) {
 		}
 	}
 		
-	// we set transpose to true to convert to column-major
-	gl.uniformMatrix4fv(uniformViewMatrixLocation, true, viewMatrix);
-	gl.uniformMatrix4fv(uniformProjectionMatrixLocation, true, projectionMatrix);
 
 	// unbind to avoid accidental modification
 	gl.bindVertexArray(vao);
@@ -181,14 +255,12 @@ function render(time) {
 	requestAnimationFrame(render);
 }
 
-function buildItemModelMatrix(item, index){
+function buildItemModelMatrix(item){
+	let rotationMatrix;
 	let modelMatrix = mat4Translation(item.position.x, item.position.y, item.position.z);	
-	
-	//deprecated lookAt(camera)
-	// let rotationMatrix = lookAtXZ(item, worldCamerPos);
-			
-	let rotationMatrix = mat4RotY(item.rotationY);
-			
+
+	rotationMatrix = mat4RotY(item.rotationY);
+
 	modelMatrix = mat4Mul(modelMatrix, rotationMatrix);
 	modelMatrix = mat4Mul(modelMatrix, mat4Scale(item.scaleFactor, item.scaleFactor, item.scaleFactor));
 
@@ -196,31 +268,15 @@ function buildItemModelMatrix(item, index){
 }
 
 function setMatrices() {	
-	const targetRotationY = -(currentAngle * 180 / Math.PI) + cameraRotation.y; //grad
 	let viewMatrix;
-	//deprecated
-	// const cameraWorldPos = getCameraWorldPosition(cameraRotation.x, -targetRotationY, cameraTranslation.z);
 
 	if(inspectMode)
-	{
-		const itemPos = items[selectedItemIndex].position;
-		const inspectDistance = 10;
-
-		const vT1 = mat4Translation(-itemPos.x, -itemPos.y, -itemPos.z);
-
-		const ry = mat4RotY(cameraRotation.y * Math.PI / 180);
-		const rx = mat4RotX(cameraRotation.x * Math.PI / 180);
-
-		const vT2 = mat4Translation(0, 0, -inspectDistance);
-		viewMatrix = mat4Mul(vT2, mat4Mul(rx, mat4Mul(ry, vT1)));
+	{		
+		viewMatrix = getViewMatrixInspect();
 	}
 	else
-	{		
-		//viewMatrix
-		const vT = mat4Translation(cameraTranslation.x, cameraTranslation.y, -cameraTranslation.z);
-		const vRy = mat4RotY((targetRotationY * Math.PI / 180));
-		const vRx = mat4RotX(cameraRotation.x * Math.PI / 180);
-		viewMatrix = mat4Mul(vT, mat4Mul(vRx, vRy));
+	{	
+		viewMatrix = getViewMatrixCarousel();
 	}
 
 	//projectionMatrix
@@ -232,8 +288,32 @@ function setMatrices() {
 	return {viewMatrix, projectionMatrix}
 }
 
+function getViewMatrixCarousel(){
+	const targetRotationY = -(currentAngle * 180 / Math.PI); //grad
+
+	const vT = mat4Translation(cameraTranslation.x, cameraTranslation.y, -cameraTranslation.z);
+	const vRy = mat4RotY((targetRotationY * Math.PI / 180));
+	const vRx = mat4RotX(cameraRotation.x * Math.PI / 180);
+
+	return mat4Mul(vT, mat4Mul(vRx, vRy));
+}
+
+function getViewMatrixInspect(){
+	const itemPos = items[selectedItemIndex].position;
+	const inspectDistance = 10;
+
+	const vT1 = mat4Translation(-itemPos.x, -itemPos.y, -itemPos.z);
+	const ry = mat4RotY(inspectModeCameraRotation.y * Math.PI / 180);
+	const rx = mat4RotX(inspectModeCameraRotation.x * Math.PI / 180);
+
+	const vT2 = mat4Translation(0, 0, -inspectDistance);
+
+	return mat4Mul(vT2, mat4Mul(rx, mat4Mul(ry, vT1)));
+}
+
 function updateItemScaleAndRotation(item, index){
 	if(inspectMode) return;
+
 	//scaling of item
 	if(index === selectedItemIndex && rotationProgressCarousel < 1){
 		item.scaleFactor = 1.0 + SCALE_FACTOR * easeInOutQuad(rotationProgressCarousel);
@@ -268,41 +348,6 @@ function updateInventoryLerp(){
 	}
 }
 
-//deprecated
-function lookAtXZ(sourceItem, targetObject)
-{
-	//look at the camera on the XZ-Plane
-	const toCameraX = targetObject.x - sourceItem.position.x;
-	const toCameraZ = targetObject.z - sourceItem.position.z;
-	const lookAtAngleY = Math.atan2(toCameraX, toCameraZ);
-	return mat4RotY(lookAtAngleY); 
-}
-
-//deprecated
-function getCameraWorldPosition(rotXDeg, rotYDeg, distance) {
-	const rotX = rotXDeg * Math.PI / 180; //radiant
-	const rotY = rotYDeg * Math.PI / 180; //radiant
-	
-	const sinY = Math.sin(rotY);
-	const cosY = Math.cos(rotY);
-	const sinX = Math.sin(rotX);
-	const cosX = Math.cos(rotX);
-	
-	// https://de.wikipedia.org/wiki/Kugelkoordinaten => !different coordinate system z = y & x = z & y = x
-	const dir = {
-		x: sinY * cosX, 
-		y: sinX,
-		z: cosY * cosX
-	};
-	
-	//from (0,0,0) => for another centerPoint add them to every coord 
-	return {
-		x: dir.x * distance,
-		y: dir.y * distance,
-		z: dir.z * distance
-	};
-}
-
 function rotateInventory(direction) {
 	previousItemIndex = selectedItemIndex;
 	items[previousItemIndex].rotationYStart = items[previousItemIndex].rotationY;
@@ -316,10 +361,10 @@ function rotateInventory(direction) {
 
 function updateCameraRotation() {
 	if(!inspectMode) return;
-	if (keysPressed.has("w")) cameraRotation.x += 1.2;
-	if (keysPressed.has("s")) cameraRotation.x -= 1.2;
-	if (keysPressed.has("d")) cameraRotation.y += 1.2;
-	if (keysPressed.has("a")) cameraRotation.y -= 1.2;
+	if (keysPressed.has("w")) inspectModeCameraRotation.x += 1.2;
+	if (keysPressed.has("s")) inspectModeCameraRotation.x -= 1.2;
+	if (keysPressed.has("d")) inspectModeCameraRotation.y += 1.2;
+	if (keysPressed.has("a")) inspectModeCameraRotation.y -= 1.2;
 };
 
 //listerners
@@ -331,6 +376,8 @@ window.addEventListener("keydown", (event) => {
 		if(key === "q") 
 		{
 			inspectMode = false;
+			inspectModeCameraRotation.x = 0.0;
+			inspectModeCameraRotation.y = 0.0;
 			return;
 		}
 	}
