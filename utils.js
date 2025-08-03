@@ -57,34 +57,32 @@ function loadTextResource(url) {
 function loadTexture(gl, url){
 	return new Promise((resolve) => {
 		const image = new Image();
+		const texture = gl.createTexture();
+
+		//https://www.youtube.com/watch?v=x8TO-nrUtSI
+		//https://www.flipcode.com/archives/Advanced_OpenGL_Texture_Mapping.shtml
+		//https://community.khronos.org/t/gl-nearest-mipmap-linear-or-gl-linear-mipmap-nearest/37648/5
 		image.onload = () => {
 			gl.bindTexture(gl.TEXTURE_2D, texture);
-			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-			gl.generateMipmap(gl.TEXTURE_2D);
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, image.width, image.height, 0, gl.RGBA,  gl.UNSIGNED_BYTE, image);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); //Nearest => psx had no interpolation
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 			gl.bindTexture(gl.TEXTURE_2D, null);
 		};
 		image.src = url;
-		
-		const texture = gl.createTexture();
-		gl.bindTexture(gl.TEXTURE_2D, texture);
-
-		const texels  = new Uint8Array([255, 0, 255, 255])
-		gl.texImage2D(gl.TEXTURE_2D, 0 , gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, texels);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-		gl.bindTexture(gl.TEXTURE_2D, null);
-
 		resolve(texture);
 	});
 }
 
-function hslToRgb(h, s, l) {
-	h /= 360;
-	const a = s * Math.min(l, 1 - l);
-	const f = (n, k = (n + h / (1/12)) % 12) => l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-	return [f(0), f(8), f(4)];
+function scaleMesh(mesh, scaleFactor) {
+	return {
+		positions: mesh.positions.map(p => p * scaleFactor),
+		normals: mesh.normals ? [...mesh.normals] : [],
+		uvs: mesh.uvs ? [...mesh.uvs] : [],
+		indices: mesh.indices ? [...mesh.indices] : []
+	};
 }
 
 function easeInOutQuad(t) {
