@@ -96,18 +96,24 @@ async function initialize() {
 	const videotapeMesh_025 = scaleMesh(videotapeMeshbox, 0.25);
 	const monkeyMesh_1 = scaleMesh(monkeyMesh, 1);
 	const stockpotMesh_2 = scaleMesh(stockpotMesh, 2);
+	const magnumMesh_5 = scaleMesh(magnumMesh, 5.0);
 	const cardBoardMesh_05 = scaleMesh(cardBoardMesh, 0.5); 
-	const torusMesh_1 = scaleMesh(torusMesh, 1);
 	const bulletMesh_1 = scaleMesh(bulletsMesh, 0.25);
-	const meshArray = [videotapeMesh_025, monkeyMesh_1, stockpotMesh_2, cardBoardMesh_05, torusMesh_1, bulletMesh_1];
+	const fireAxeMesh_4 = scaleMesh(bloodyFireAxeMesh, 4.0)
+	const healthDrinkMesh_015 = scaleMesh(healthDrinkMesh, 0.15);
+	const silverMedallionMesh_015 = scaleMesh(silverMedallionMesh, 0.15);
+	const meshArray = [videotapeMesh_025, monkeyMesh_1, stockpotMesh_2, cardBoardMesh_05, magnumMesh_5, bulletMesh_1, fireAxeMesh_4, healthDrinkMesh_015, silverMedallionMesh_015, bulletMesh_1];
 
 	const videotapeTexture = await loadTexture(gl, "./textures/videoTape.png");
 	const monkeyMeshTexture = await loadTexture(gl, "./textures/wooden_gate_diff_1k.png"); 
 	const cardBoardTexture = await loadTexture(gl, "./textures/cardBoard.png");
 	const stockpotTexture = await loadTexture(gl, "./textures/crockPot.png");
-	const torusTexture = await loadTexture(gl, "./textures/rosewood_veneer1_diff_1k.png")
+	const magnumTexture = await loadTexture(gl, "./textures/magnum.png")
 	const bulletTexture = await loadTexture(gl, "./textures/bullet.png");
-	const textureArray = [videotapeTexture, monkeyMeshTexture, stockpotTexture, cardBoardTexture, torusTexture, bulletTexture];
+	const fireAxeTexture = await loadTexture(gl, "./textures/fireAxe.png");
+	const healthDrinkTexture = await loadTexture(gl, "./textures/healthDrink.png");
+	const silverMedallionTexture = await loadTexture(gl, "./textures/medallion.png");
+	const textureArray = [videotapeTexture, monkeyMeshTexture, stockpotTexture, cardBoardTexture, magnumTexture, bulletTexture, fireAxeTexture, healthDrinkTexture, silverMedallionTexture, bulletTexture];
 
 	backgroundTexture = await loadTexture(gl, "./textures/leather_red_03_coll1_1k.png");
 
