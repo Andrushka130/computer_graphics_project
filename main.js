@@ -38,13 +38,24 @@ let rotationProgressCarousel = 1;
 
 let backgroundTexture;
 
+const crtCheckbox = document.querySelector("#CRT-Switch");
+const key_1 = {
+	button: document.querySelector("#key-1"),
+	text: document.querySelector("#key-1-text") 
+};
+const key_2 = {
+	button: document.querySelector("#key-2"),
+	text: document.querySelector("#key-2-text") 
+};
+	
+
 //input "manager" for simultaneously button presses
 const keysPressed = new Set();
 
 async function initialize() {
 	const canvas = document.querySelector("canvas"); // get the html canvas element
 	const canvasWrapper = document.querySelector("#canvasWrapper");
-	
+
 	// everytime we talk to WebGL we use this object
 	gl = canvas.getContext("webgl2", { alpha: false });
 
@@ -63,8 +74,8 @@ async function initialize() {
 	gl.enable(gl.CULL_FACE); // enable back-face culling
 
 	// loadTextResource returns a string that contains the content of a text file
-	const vertexShaderText = await loadTextResource("shader.vert");
-	const fragmentShaderText = await loadTextResource("shader.frag");
+	const vertexShaderText = await loadTextResource("./glsl/shader.vert");
+	const fragmentShaderText = await loadTextResource("./glsl/shader.frag");
 	// compile GLSL shaders - turn shader code into machine code that the GPU understands
 	const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderText);
 	const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderText);
@@ -196,7 +207,8 @@ function uploadBackgroundData(){
 
 function render(time) {
 	//render scene in offscreen
-	gl.bindFramebuffer(gl.FRAMEBUFFER, crtFrameBuffer);
+	if(crtCheckbox.checked) gl.bindFramebuffer(gl.FRAMEBUFFER, crtFrameBuffer);
+
 	gl.clearColor(0, 0, 0, 1);
 	gl.clear(gl.COLOR_BUFFER_BIT);
 	gl.clear(gl.DEPTH_BUFFER_BIT);
@@ -208,30 +220,27 @@ function render(time) {
 	
 	gl.enable(gl.DEPTH_TEST); // enable z-buffering
 	drawItems();
+	
+	if(crtCheckbox.checked)
+	{
+		addCRT(time);
+	}
+	
+	// unbind to avoid accidental modification
+	gl.bindVertexArray(null);
+	gl.useProgram(null);
 
-	//use crt || null => go back to monitor
+	requestAnimationFrame(render);
+}
+
+function addCRT(time){
 	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 	gl.useProgram(crtProgram);
 	gl.bindVertexArray(crtVAO);
 
 	const uniformTextureLocation = gl.getUniformLocation(crtProgram, "u_texture");
-
 	gl.uniform1f(gl.getUniformLocation(crtProgram, "u_time"), time * 0.001);
-	gl.uniform1f(gl.getUniformLocation(crtProgram, "u_barrel"), crtConfig.barrelDistortion);
-	gl.uniform1f(gl.getUniformLocation(crtProgram, "u_aberration"), crtConfig.chromaticAberration);
-	gl.uniform1f(gl.getUniformLocation(crtProgram, "u_noise"), crtConfig.staticNoise);
-	gl.uniform1f(gl.getUniformLocation(crtProgram, "u_tearing"), crtConfig.horizontalTearing);
-	gl.uniform1f(gl.getUniformLocation(crtProgram, "u_glow"), crtConfig.glowBloom);
-	gl.uniform1f(gl.getUniformLocation(crtProgram, "u_jitter"), crtConfig.verticalJitter);
-	gl.uniform1i(gl.getUniformLocation(crtProgram, "u_retrace"), crtConfig.retraceLines);
-	gl.uniform1i(gl.getUniformLocation(crtProgram, "u_dotMask"), crtConfig.dotMask);
-	gl.uniform1f(gl.getUniformLocation(crtProgram, "u_brightness"), crtConfig.brightness);
-	gl.uniform1f(gl.getUniformLocation(crtProgram, "u_contrast"), crtConfig.contrast);
-	gl.uniform1f(gl.getUniformLocation(crtProgram, "u_desaturation"), crtConfig.desaturation);
-	gl.uniform1f(gl.getUniformLocation(crtProgram, "u_flicker"), crtConfig.flicker);
-	gl.uniform1f(gl.getUniformLocation(crtProgram, "u_scanlineIntensity"), crtConfig.scanlineIntensity);
-	gl.uniform1f(gl.getUniformLocation(crtProgram, "u_curvature"), crtConfig.curvature);
-	gl.uniform1f(gl.getUniformLocation(crtProgram, "u_signalLoss"), crtConfig.signalLoss);
+
 
 	gl.activeTexture(gl.TEXTURE0);
 	//connect crtScene with my sceneTexture from the offscreenBuffer
@@ -239,12 +248,6 @@ function render(time) {
 	gl.uniform1i(uniformTextureLocation, 0);
 
 	gl.drawElements(gl.TRIANGLES, quadMesh.indices.length, gl.UNSIGNED_SHORT, 0);
-
-	// unbind to avoid accidental modification
-	gl.bindVertexArray(null);
-	gl.useProgram(null);
-
-	requestAnimationFrame(render);
 }
 
 function drawItems(){
@@ -437,6 +440,10 @@ window.addEventListener("keydown", (event) => {
 			inspectMode = false;
 			inspectModeCameraRotation.x = 0.0;
 			inspectModeCameraRotation.y = 0.0;
+
+			key_1.button.innerHTML = "A/D";
+			key_1.text.innerHTML = "Switch Item";
+			key_2.text.innerHTML = "Inspect Item";
 			return;
 		}
 	}
@@ -446,7 +453,14 @@ window.addEventListener("keydown", (event) => {
 	{
 		if(key === "a") rotateInventory(-1);
 		if(key === "d") rotateInventory(1);
-		if(key === "q") inspectMode = true;
+		if(key === "q") 
+		{
+			inspectMode = true;
+
+			key_1.button.innerHTML = "W/A/S/D";
+			key_1.text.innerHTML = "Rotate Item";
+			key_2.text.innerHTML = "Return";
+		}
 		return;
 	}
 	
@@ -463,25 +477,8 @@ window.addEventListener("keyup", (event) => {
 //CRT-POSTPROCESS
 async function createCRTPostProcess()
 {
-	crtConfig = Object.assign({
-		barrelDistortion: 0.002, //crt curvature
-		curvature: 0.002, //adjust curvature
-		chromaticAberration: 0.0005, //slightly separates RGB colors
-		horizontalTearing: 0.00012, //horizontal distortion
-		glowBloom: 0.001, //glow of crt pixels
-		verticalJitter: 0.001, //oscillate vertically
-		retraceLine: true, //adds crt refresh lines
-		scanlineIntensity: 0.6, //adjust scnaline intensity
-		dotMask: false, //simulates pixel structure of crt
-		brightness: 1.0,
-		contrast: 1.0,
-		desaturation: 0.1, //reduces color saturation for a faded effect
-		flicker: 0.01, //occasional flicker
-		signalLoss: 0.05 //VHS signal loss artifacts
-	});
-
-	const crtShaderText = await loadTextResource("crtShader.vert");
-	const crtFShaderText = await loadTextResource("crtShader.frag");
+	const crtShaderText = await loadTextResource("./glsl/crtShader.vert");
+	const crtFShaderText = await loadTextResource("./glsl/crtShader.frag");
 
 	const crtShader = createShader(gl, gl.VERTEX_SHADER, crtShaderText);
 	const crtFShader = createShader(gl, gl.FRAGMENT_SHADER, crtFShaderText);

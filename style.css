@@ -29,13 +29,65 @@ body, html {
 }
 
 #header{
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
+	align-items: center;
+	gap: 2.5rem;
 	width: 100%;
-	background-color: rgb(170, 145, 145);
+	margin-bottom: 1rem;
 }
 
 #header > h2{
-	width: 100%;
+	width: auto;
 	margin: 0
+}
+
+#header > h2{
+	width: auto;
+	margin: 0
+}
+
+#wrapper-input{
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	
+	position: absolute;
+	inset: 87.5% 1.5%;
+	background-color: black;
+	height: fit-content;
+	width: 16%;
+	font-size: 20px;
+	font-weight: bold;
+	padding: 0.5rem;
+}
+
+.wrapper-key{
+	width: 100%;
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	gap: 1rem;
+}
+
+.key{
+	width: 35%;
+	display: flex;
+	justify-content: end;
+	padding: 0;
+	margin: 0;
+	font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+	font-weight: 300;
+}
+
+.key-text{
+	width: 65%;
+	display: flex;
+	justify-content: start;
+	padding: 0;
+	margin: 0;
 }
 
 #canvasWrapper{

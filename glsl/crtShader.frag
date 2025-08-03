@@ -14,8 +14,10 @@ out vec4 outColor;
 
 
 // BIG SHOUTOUTS => https://github.com/Ichiaka/CRTFilter 
-// and https://www.shadertoy.com/view/4scSR8
-// and 
+
+// and https://www.shadertoy.com/view/4scSR8 -> every pixel was effected by the three nearest scanlines
+// to emulate proper crt which fuses pixel with scanline for smooth edges in pixel games. 
+// But i didnt implemented it. Because i would just copy the code and tbh i didnt fully unterstand every step
 void main() {
 	vec2 uv = v_uv;
 
