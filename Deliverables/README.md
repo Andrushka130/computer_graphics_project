@@ -1,6 +1,6 @@
 # Tomb Raider-Inspired Inventory with CRT Effect
 
-This project features a **PS1-style inventory system** inspired by the original *Tomb Raider* (1996, PSX), combined with a **CRT post-processing effect** to evoke the visuals of classic consoles. This project was created as part of the Computer Graphics hold by Timo Eberl (https://github.com/timo-eberl) module at HdM (Stuttgart Media University).
+This project features a **PS1-style inventory system** inspired by the original *Tomb Raider* (1996, PSX), combined with a **CRT post-processing effect** to evoke the visuals of classic consoles. This project was created as part of the Computer Graphics module hold by Timo Eberl (https://github.com/timo-eberl) at HdM (Stuttgart Media University).
 
 > ![Alt-Text](../readMe_assets/Screen%20Recording.gif)
 
