@@ -27,10 +27,11 @@ I'm also fascinated by **authentic graphics on original hardware**, which is why
 ## 📸 Reference
 
 > Inventory inspired by *Tomb Raider* (PlayStation, 1996)
-
+>
+> ![Alt-Text](./images/inventory_tombraider.png)
 ---
 
-## ✅ Controls Summary
+## Controls Summary
 
 | Key        | Action                                |
 |------------|----------------------------------------|
@@ -40,3 +41,4 @@ I'm also fascinated by **authentic graphics on original hardware**, which is why
 | ⬜ Checkbox| Toggle CRT post-processing filter       |
 
 ---
+
