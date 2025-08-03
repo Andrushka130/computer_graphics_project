@@ -70,7 +70,6 @@ I'm also fascinated by **authentic graphics on original hardware**, which is why
 - wooden_gate_diff_1k by **Amal Kumar**: https://polyhaven.com/a/wooden_gate
 
 ### Credits & Acknowledgments
-
 Throughout the codebase, you'll find comments starting with `shoutouts` followed by a URL. These indicate helpful sources I referred to during development.
 I did **not copy any entire code snippets**. In cases where I may have reused something, it was limited to **a few isolated lines** at most. Primarily, I used these references to **deepen my understanding of certain principles**, or to gain inspiration for writing my own code.
 Whenever a particular source contributed to my learning or problem-solving process, I felt it was only right to acknowledge it. I believe credit should be given where it's due, especially when someone’s shared knowledge helps others grow.
