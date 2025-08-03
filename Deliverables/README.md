@@ -42,7 +42,7 @@ I'm also fascinated by **authentic graphics on original hardware**, which is why
 > ![Alt-Text](../readMe_assets/inventory_tombraider.png)
 ---
 
-## Controls Summary
+## Controls
 
 | Key        | Action                                |
 |------------|----------------------------------------|
@@ -55,12 +55,16 @@ I'm also fascinated by **authentic graphics on original hardware**, which is why
 
 ## External sources
 
-### 3D-Models
-- PSX Cardboard Box by zhya: https://sketchfab.com/3d-models/psx-cardboard-box-e4881315912d4ef69282c460def5b872 
-- PSX Stockpot by Charckes: https://sketchfab.com/3d-models/psx-stockpot-5df3dba1a5634e558040e37483ff509e 
-- PSX 357 Magnum Revolver by Charckes: https://sketchfab.com/3d-models/psx-357-magnum-revolver-7f8b565bee8249fd9bf4d226cf9ed0de by Chrackles
-- PSX Bloody Fire Axe by Charckes: https://sketchfab.com/3d-models/psx-bloody-fire-axe-d17f0ddd6d354906b861d648834c6024
-- Silent Hill 1 Meshes - Video Tape by SilentQuest: https://sketchfab.com/3d-models/silent-hill-1-meshes-video-tape-1cb097f5d75848bb88a6a776a4a943ee
-- Silent Hill 1 Meshes - Handgun Bullets by SilentQuest: https://sketchfab.com/3d-models/silent-hill-1-meshes-handgun-bullets-2f6cbf1310184d908d9ada49dc0f99b3
-- Silent Hill 1 Meshes – Chemical by SilentQuest: https://sketchfab.com/3d-models/silent-hill-1-meshes-chemical-748bdc335d4b4eb19fcd3423c62c51db
-- Silent Hill 1 Meshes - Silver Medallion by SilentQuest: https://sketchfab.com/3d-models/silent-hill-1-meshes-silver-medallion-b5661678ab0243999bc9833101613720
+### 3D-Models with Textures
+- PSX Cardboard Box by **zhya**: https://sketchfab.com/3d-models/psx-cardboard-box-e4881315912d4ef69282c460def5b872 
+- PSX Stockpot by **Charckes**: https://sketchfab.com/3d-models/psx-stockpot-5df3dba1a5634e558040e37483ff509e 
+- PSX 357 Magnum Revolver by **Charckes**: https://sketchfab.com/3d-models/psx-357-magnum-revolver-7f8b565bee8249fd9bf4d226cf9ed0de by Chrackles
+- PSX Bloody Fire Axe by **Charckes**: https://sketchfab.com/3d-models/psx-bloody-fire-axe-d17f0ddd6d354906b861d648834c6024
+- Silent Hill 1 Meshes - Video Tape by **SilentQuest**: https://sketchfab.com/3d-models/silent-hill-1-meshes-video-tape-1cb097f5d75848bb88a6a776a4a943ee
+- Silent Hill 1 Meshes - Handgun Bullets by **SilentQuest**: https://sketchfab.com/3d-models/silent-hill-1-meshes-handgun-bullets-2f6cbf1310184d908d9ada49dc0f99b3
+- Silent Hill 1 Meshes – Chemical by **SilentQuest**: https://sketchfab.com/3d-models/silent-hill-1-meshes-chemical-748bdc335d4b4eb19fcd3423c62c51db
+- Silent Hill 1 Meshes - Silver Medallion by **SilentQuest**: https://sketchfab.com/3d-models/silent-hill-1-meshes-silver-medallion-b5661678ab0243999bc9833101613720
+
+### Single textures
+- leather_red_03_coll1_1k by **Rob Tuytel**: https://polyhaven.com/a/leather_red_03
+- wooden_gate_diff_1k by **Amal Kumar**: https://polyhaven.com/a/wooden_gate
